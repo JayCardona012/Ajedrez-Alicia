@@ -90,8 +90,13 @@ class AjedrezAlicia:
 
             if tablero != tablero_origen and self.movimiento_valido(x, y, x_origen, y_origen, pieza, tablero):
                 # Actualizar visualmente
-                casilla_origen.configure(text="", fg_color=("beige" if (x_origen + y_origen) % 2 == 0 else "brown"))
                 casilla_destino = self.obtener_casilla(x, y, tablero)
+
+                # Capturar ficha si existe en destino
+                if casilla_destino.cget("text") != "":
+                    self.eliminar_ficha(x, y, tablero)
+
+                casilla_origen.configure(text="", fg_color=("beige" if (x_origen + y_origen) % 2 == 0 else "brown"))
                 casilla_destino.configure(text=pieza, text_color=color_pieza)
 
                 # Actualizar ocupación
@@ -106,6 +111,15 @@ class AjedrezAlicia:
                 self.limpiar_movimientos_legales(tablero)
                 messagebox.showinfo("Movimiento inválido", "Movimiento no permitido.")
                 self.limpiar_seleccion()
+
+    def eliminar_ficha(self, x, y, tablero):
+        # Eliminar ficha visualmente y lógicamente
+        casilla = self.obtener_casilla(x, y, tablero)
+        casilla.configure(text="", text_color="")
+        if tablero == 'A':
+            self.ocupacion_a[x][y] = None
+        else:
+            self.ocupacion_b[x][y] = None
                 
     def actualizar_ocupacion(self, x, y, x_origen, y_origen, pieza, tablero, tablero_origen):
         # Actualizar ocupación lógica
@@ -124,12 +138,21 @@ class AjedrezAlicia:
     def movimiento_valido(self, x, y, x_origen, y_origen, pieza, tablero):
         dx, dy = abs(x - x_origen), abs(y - y_origen)
         direccion = -1 if pieza == "\u2659" else 1  # Blancos avanzan positivo, negros negativo
-        
-         # Verificar si la casilla destino está ocupada en el tablero correspondiente
-        ocupacion_destino = self.ocupacion_a if tablero == 'A' else self.ocupacion_b
-        if ocupacion_destino[x][y] is not None:
-            return False
 
+        # Determinar el estado lógico del tablero correspondiente
+        ocupacion_destino = self.ocupacion_a if tablero == 'A' else self.ocupacion_b
+
+        # Captura: verificar si la casilla destino contiene una pieza opuesta
+        if ocupacion_destino[x][y] is not None:
+            if self.es_ficha_opuesta(pieza, ocupacion_destino[x][y]):
+                if pieza in ["\u2659", "\u265F"]:  # Peón captura en diagonal
+                    return dx == 1 and dy == 1
+                # Otras piezas pueden capturar según sus movimientos normales
+                return self.movimiento_base_valido(dx, dy, pieza)
+            else:
+                return False
+
+        # Movimiento normal sin captura
         if pieza in ["\u2659", "\u265F"]:  # Peón
             # Avance simple
             if dy == 0 and dx == 1:
@@ -137,26 +160,34 @@ class AjedrezAlicia:
             # Avance doble desde posición inicial
             if dy == 0 and dx == 2:
                 inicio = 6 if pieza == "\u2659" else 1
-                return x_origen == inicio and x == x_origen + 2 * direccion
-            # Captura en diagonal
-            if dy == 1 and dx == 1:
-                destino = self.obtener_casilla(x, y, tablero)
-                return destino.cget("text") != "" and self.es_ficha_opuesta(pieza, destino.cget("text"))
-            return False  
-        
-        
-        
-        elif pieza in ["\u2658", "\u265E"]:  # Caballo
+                return x_origen == inicio and x == x_origen + 2 * direccion and ocupacion_destino[x_origen + direccion][y_origen] is None
+        else:
+            # Otros tipos de piezas
+            return self.movimiento_base_valido(dx, dy, pieza)
+
+        return False
+    
+    
+    def movimiento_base_valido(self, dx, dy, pieza):
+        """Define los movimientos básicos de cada pieza"""
+        if pieza in ["\u2658", "\u265E"]:  # Caballo
             return (dx == 2 and dy == 1) or (dx == 1 and dy == 2)
         elif pieza in ["\u2656", "\u265C"]:  # Torre
             return (dx == 0 and dy > 0) or (dy == 0 and dx > 0)
         elif pieza in ["\u2657", "\u265D"]:  # Alfil
-            return dx == dy
+            return dx == dy and not (dx == 0 and dy == 0)
         elif pieza in ["\u2655", "\u265B"]:  # Reina
-            return (dx == dy) or (dx == 0 or dy == 0)
+            return ((dx == dy) or (dx == 0 or dy == 0)) and not (dx == 0 and dy == 0)
         elif pieza in ["\u2654", "\u265A"]:  # Rey
+            return dx <= 1 and dy <= 1 and not (dx == 0 and dy == 0)
             return dx <= 1 and dy <= 1
-        return super().movimiento_valido(x, y, x_origen, y_origen, pieza, tablero)
+        return False
+
+    def es_ficha_opuesta(self, pieza1, pieza2):
+        """Determina si dos piezas son de colores opuestos"""
+        blancas = ["\u2654", "\u2655", "\u2656", "\u2657", "\u2658", "\u2659"]
+        negras = ["\u265A", "\u265B", "\u265C", "\u265D", "\u265E", "\u265F"]
+        return (pieza1 in blancas and pieza2 in negras) or (pieza1 in negras and pieza2 in blancas)
     
         
 
