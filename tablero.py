@@ -1,17 +1,22 @@
 import customtkinter as ctk
 from tkinter import messagebox
-
+import random
 # Clase para representar el tablero y sus piezas
 class AjedrezAlicia:
     def __init__(self, root):
         self.root = root
         self.tablero_a = []
         self.tablero_b = []
-        self.ocupacion_a = [[None for _ in range(8)] for _ in range(8)]  # Estado lógico del tablero A
-        self.ocupacion_b = [[None for _ in range(8)] for _ in range(8)] 
+        self.ocupacion_a = [[None for _ in range(8)] for _ in range(8)]
+        self.ocupacion_b = [[None for _ in range(8)] for _ in range(8)]
         self.pieza_seleccionada = None
-        self.tablero_actual = 'A'  # Para alternar entre tableros
+        self.tablero_actual = 'A'
+        self.casilla_ia_anterior = None
+        self.capturas_ia = []
+        self.capturas_jugador = []
         self.crear_tableros()
+        self.mostrar_contadores()
+        
 
     def crear_tableros(self):
         self.frame_a = ctk.CTkFrame(self.root)
@@ -45,6 +50,18 @@ class AjedrezAlicia:
         # Inicializar piezas en el tablero A
         self.inicializar_piezas()
 
+        # Crear áreas para fichas capturadas
+        self.frame_capturas_jugador = ctk.CTkFrame(self.root)
+        self.frame_capturas_jugador.grid(row=1, column=0, padx=10, pady=10)
+        self.label_capturas_jugador = ctk.CTkLabel(self.frame_capturas_jugador, text="Capturas Jugador:")
+        self.label_capturas_jugador.pack(side="left")
+
+        self.frame_capturas_ia = ctk.CTkFrame(self.root)
+        self.frame_capturas_ia.grid(row=2, column=0, padx=10, pady=10)  # Cambiar a row=2
+        self.label_capturas_ia = ctk.CTkLabel(self.frame_capturas_ia, text="Capturas IA:")
+        self.label_capturas_ia.pack(side="left")
+        
+        
     def inicializar_piezas(self):
         piezas_blancas = ["\u2656", "\u2658", "\u2657", "\u2655", "\u2654", "\u2657", "\u2658", "\u2656"]
         piezas_negras = ["\u265C", "\u265E", "\u265D", "\u265B", "\u265A", "\u265D", "\u265E", "\u265C"]
@@ -56,7 +73,6 @@ class AjedrezAlicia:
             self.tablero_a[1][i].configure(text="\u265F", text_color="black")
             self.ocupacion_a[1][i] = "\u265F"
 
-        # Piezas blancas
         for i in range(8):
             self.tablero_a[6][i].configure(text="\u2659", text_color="blue")
             self.ocupacion_a[6][i] = "\u2659"
@@ -64,7 +80,27 @@ class AjedrezAlicia:
             self.ocupacion_a[7][i] = piezas_blancas[i]
             
             
+    def mostrar_contadores(self):
+        self.actualizar_contadores()
 
+    def actualizar_contadores(self):
+        # Actualizar visualización de capturas
+        for widget in self.frame_capturas_jugador.winfo_children():
+            widget.destroy()
+        for widget in self.frame_capturas_ia.winfo_children():
+            widget.destroy()
+
+        self.label_capturas_jugador = ctk.CTkLabel(self.frame_capturas_jugador, text="Capturas Jugador: ")
+        self.label_capturas_jugador.pack(side="left")
+        for pieza in self.capturas_jugador:
+            ctk.CTkLabel(self.frame_capturas_jugador, text=pieza).pack(side="left")
+
+        self.label_capturas_ia = ctk.CTkLabel(self.frame_capturas_ia, text="Capturas IA: ")
+        self.label_capturas_ia.pack(side="left")
+        for pieza in self.capturas_ia:
+            ctk.CTkLabel(self.frame_capturas_ia, text=pieza).pack(side="left")
+        
+        
 
     def seleccionar_casilla(self, x, y, tablero):
         if self.pieza_seleccionada is None:
@@ -74,7 +110,8 @@ class AjedrezAlicia:
 
     def intentar_seleccionar_pieza(self, x, y, tablero):
         casilla = self.obtener_casilla(x, y, tablero)
-        if casilla.cget("text") != "":  # Hay una pieza en la casilla
+        pieza = casilla.cget("text")
+        if pieza != "" and pieza in ["\u2654", "\u2655", "\u2656", "\u2657", "\u2658", "\u2659"]:  # Solo piezas blancas
             self.pieza_seleccionada = (x, y, tablero)
             casilla.configure(fg_color="yellow")
             self.mostrar_movimientos_legales(x, y, tablero)
@@ -89,6 +126,11 @@ class AjedrezAlicia:
             color_pieza = casilla_origen.cget("text_color")
 
             if tablero != tablero_origen and self.movimiento_valido(x, y, x_origen, y_origen, pieza, tablero):
+                # Limpiar la casilla roja anterior de la IA
+                if self.casilla_ia_anterior:
+                    self.casilla_ia_anterior.configure(fg_color=("beige" if (x + y) % 2 == 0 else "brown"))
+                    self.casilla_ia_anterior = None
+
                 # Actualizar visualmente
                 casilla_destino = self.obtener_casilla(x, y, tablero)
 
@@ -106,15 +148,78 @@ class AjedrezAlicia:
                 self.pieza_seleccionada = None
                 self.limpiar_movimientos_legales(tablero_origen)
                 self.limpiar_movimientos_legales(tablero)
+
+                # Retrasar el turno de la IA
+                self.root.after(1000, self.turno_ia)  # Retraso de 1000 ms (1 segundo)
             else:
                 self.limpiar_movimientos_legales(tablero_origen)
                 self.limpiar_movimientos_legales(tablero)
                 messagebox.showinfo("Movimiento inválido", "Movimiento no permitido.")
                 self.limpiar_seleccion()
+                
+
+    def turno_ia(self):
+        movimientos_validos = self.obtener_movimientos_validos_ia()
+        if movimientos_validos:
+            movimiento = random.choice(movimientos_validos)
+            x_origen, y_origen, x_destino, y_destino, tablero_origen, tablero_destino = movimiento
+            self.realizar_movimiento_ia(x_origen, y_origen, x_destino, y_destino, tablero_origen, tablero_destino)
+
+    def obtener_movimientos_validos_ia(self):
+        movimientos = []
+        # Considerar movimientos desde el tablero A al B
+        for x in range(8):
+            for y in range(8):
+                pieza = self.ocupacion_a[x][y]
+                if pieza and pieza in ["\u265C", "\u265E", "\u265D", "\u265B", "\u265A", "\u265F"]:  # Piezas negras
+                    for i in range(8):
+                        for j in range(8):
+                            if self.movimiento_valido(i, j, x, y, pieza, 'B'):
+                                movimientos.append((x, y, i, j, 'A', 'B'))
+        
+        # Considerar movimientos desde el tablero B al A
+        for x in range(8):
+            for y in range(8):
+                pieza = self.ocupacion_b[x][y]
+                if pieza and pieza in ["\u265C", "\u265E", "\u265D", "\u265B", "\u265A", "\u265F"]:  # Piezas negras
+                    for i in range(8):
+                        for j in range(8):
+                            if self.movimiento_valido(i, j, x, y, pieza, 'A'):
+                                movimientos.append((x, y, i, j, 'B', 'A'))
+    
+        return movimientos
+
+    def realizar_movimiento_ia(self, x_origen, y_origen, x_destino, y_destino, tablero_origen, tablero_destino):
+        casilla_origen = self.obtener_casilla(x_origen, y_origen, tablero_origen)
+        pieza = casilla_origen.cget("text")
+        color_pieza = casilla_origen.cget("text_color")
+
+        casilla_destino = self.obtener_casilla(x_destino, y_destino, tablero_destino)
+
+        # Capturar ficha si existe en destino
+        if casilla_destino.cget("text") != "":
+            self.eliminar_ficha(x_destino, y_destino, tablero_destino)
+
+        casilla_origen.configure(text="", fg_color=("beige" if (x_origen + y_origen) % 2 == 0 else "brown"))
+        casilla_destino.configure(text=pieza, text_color=color_pieza)
+
+        # Actualizar ocupación
+        self.actualizar_ocupacion(x_destino, y_destino, x_origen, y_origen, pieza, tablero_destino, tablero_origen)
+
+        # Limpiar movimientos legales
+        self.limpiar_movimientos_legales(tablero_origen)
+        self.limpiar_movimientos_legales(tablero_destino)
 
     def eliminar_ficha(self, x, y, tablero):
-        # Eliminar ficha visualmente y lógicamente
         casilla = self.obtener_casilla(x, y, tablero)
+        pieza = casilla.cget("text")
+        if pieza != "":
+            if pieza in ["\u2654", "\u2655", "\u2656", "\u2657", "\u2658", "\u2659"]:  # Piezas blancas
+                self.capturas_ia.append(pieza)
+            else:
+                self.capturas_jugador.append(pieza)
+            self.actualizar_contadores()
+
         casilla.configure(text="", text_color="")
         if tablero == 'A':
             self.ocupacion_a[x][y] = None
@@ -222,7 +327,7 @@ class AjedrezAlicia:
 
 # Inicializar la interfaz gráfica
 root = ctk.CTk()
-root.geometry("700x400")
+root.geometry("700x450")
 root.title("Ajedrez de Alicia")
 ajedrez = AjedrezAlicia(root)
 root.mainloop()
