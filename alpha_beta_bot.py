@@ -1,4 +1,4 @@
-"""Main bot class implementing the Player interface."""
+
 from alicechess import Player, PromoteType
 from evaluator import StateEvaluator
 from minimax import MinimaxStrategy
@@ -16,7 +16,6 @@ class AlphaBetaBot(Player):
         self.move_selector = MoveSelector(self.minimax_strategy, max_threads)
 
     def make_move(self, game_state):
-        """Selects the best move using concurrent alpha-beta search."""
         return self.move_selector.select_best_move(
             game_state,
             self.depth,
@@ -24,5 +23,4 @@ class AlphaBetaBot(Player):
         )
 
     def promote(self, game_state):
-        """Selects queen for pawn promotion."""
         return PromoteType.QUEEN

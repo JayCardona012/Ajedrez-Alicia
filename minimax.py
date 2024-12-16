@@ -1,11 +1,10 @@
-"""Minimax algorithm implementation with alpha-beta pruning."""
+
 
 class MinimaxStrategy:
     def __init__(self, evaluator):
         self.evaluator = evaluator
 
     def alpha_beta(self, state, depth, alpha, beta, maximizing):
-        """Implements Minimax with alpha-beta pruning."""
         if depth == 0 or state.is_game_over():
             return self.evaluator.evaluate(state)
 

@@ -1,4 +1,4 @@
-"""Constants and configuration values for the chess bot."""
+
 
 PIECE_VALUES = {
     "KING": 0,    # Not included in scoring

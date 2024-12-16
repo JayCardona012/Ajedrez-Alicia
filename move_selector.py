@@ -1,4 +1,4 @@
-"""Move selection implementation using threading."""
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from constants import DEFAULT_THREAD_COUNT, MIN_MOVES_FOR_PARALLEL
 
@@ -41,7 +41,6 @@ class MoveSelector:
         return best_move
     
     def _evaluate_move(self, move, game_state, depth, maximizing):
-        """Evaluates a single move using the minimax strategy."""
         next_state = game_state.make_move(move)
         return self.minimax_strategy.alpha_beta(
             next_state,

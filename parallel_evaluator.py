@@ -1,9 +1,8 @@
-"""Parallel move evaluation using multiprocessing."""
+
 from multiprocessing import Pool
 from constants import DEFAULT_PROCESS_COUNT, MIN_MOVES_FOR_PARALLEL
 
 def evaluate_move_task(args):
-    """Task function for parallel move evaluation."""
     minimax_strategy, state, depth, move, maximizing = args
     next_state = state.make_move(move)
     value = minimax_strategy.alpha_beta(
@@ -31,7 +30,6 @@ class ParallelEvaluator:
             self._pool.join()
 
     def _evaluate_single_move(self, move, state, depth, maximizing):
-        """Evaluates a single move using the minimax strategy."""
         next_state = state.make_move(move)
         return self.minimax_strategy.alpha_beta(
             next_state,
@@ -42,7 +40,6 @@ class ParallelEvaluator:
         )
 
     def evaluate_moves(self, moves, state, depth, maximizing):
-        """Evaluates moves in parallel using process pool."""
         if len(moves) < MIN_MOVES_FOR_PARALLEL:
             # For small number of moves, evaluate sequentially
             return [
