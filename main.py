@@ -9,5 +9,4 @@ if __name__ == "__main__":
     else:
         Game(white=AlphaBetaBot, black=AlphaBetaBot).start_window()
 
-
 Game.new().run()
