@@ -1,8 +1,8 @@
 
 from alicechess import Player, PromoteType
-from evaluator import StateEvaluator
+from Heuristica import StateEvaluator
 from minimax import MinimaxStrategy
-from move_selector import MoveSelector
+from Movimientos import MoveSelector
 from constants import DEFAULT_THREAD_COUNT
 
 class AlphaBetaBot(Player):
